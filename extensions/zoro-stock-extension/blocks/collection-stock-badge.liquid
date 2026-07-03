@@ -21,7 +21,7 @@
 
       const cardSelector = source.dataset.cardSelector || '.card-wrapper, .grid__item, product-card';
       const mediaSelector = source.dataset.mediaSelector || '.card__media, .product-card__image-wrapper, .media, a[href*="/products/"]';
-      const badgeText = source.dataset.badgeText || 'Running Low';
+      const badgeText = source.dataset.badgeText || '🔥 Running Low';
       const styles = window.getComputedStyle(source);
       const backgroundColor = styles.getPropertyValue('--zoro-badge-bg').trim() || '#e11d48';
       const textColor = styles.getPropertyValue('--zoro-badge-color').trim() || '#ffffff';
@@ -56,7 +56,7 @@
       "type": "text",
       "id": "badge_text",
       "label": "Badge text",
-      "default": "Running Low"
+      "default": "🔥 Running Low"
     },
     {
       "type": "color",
