@@ -1,0 +1,179 @@
+{{ 'zoro-stock.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign selected_variant = product.selected_or_first_available_variant
+  assign native_stock = blank
+  if selected_variant and selected_variant.inventory_management and selected_variant.inventory_quantity > 0
+    assign native_stock = selected_variant.inventory_quantity
+  endif
+  assign starting_stock = native_stock | default: block.settings.fallback_start_count
+-%}
+
+<div
+  class="zoro-stock-counter"
+  data-zoro-stock-counter
+  data-product-id="{{ product.id | default: 'product' }}"
+  data-variant-id="{{ selected_variant.id | default: 'variant' }}"
+  data-native-stock="{{ native_stock }}"
+  data-start-count="{{ block.settings.fallback_start_count }}"
+  data-min-count="{{ block.settings.minimum_count }}"
+  data-max-count="{{ block.settings.progress_max_count }}"
+  data-text-template="{{ block.settings.message | escape }}"
+  data-target-selector="{{ block.settings.target_selector | escape }}"
+  data-insert-mode="{{ block.settings.insert_mode }}"
+  style="--zoro-stock-progress: {{ block.settings.progress_bar_color }}; --zoro-stock-accent: {{ block.settings.progress_bar_color }};"
+  {{ block.shopify_attributes }}
+>
+  <span class="zoro-stock-counter__pulse" aria-hidden="true"></span>
+  <div class="zoro-stock-counter__content">
+    <p class="zoro-stock-counter__text" style="font-size: {{ block.settings.text_size }}px;">
+      {{ block.settings.message | replace: '{{ stock_count }}', starting_stock }}
+    </p>
+    <div class="zoro-stock-counter__track" aria-hidden="true">
+      <span class="zoro-stock-counter__bar" style="transform: scaleX(1);"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const counters = document.querySelectorAll('[data-zoro-stock-counter]');
+    if (!counters.length) return;
+
+    const sessionTokenKey = 'zoro-stock-session-token';
+    let sessionToken = sessionStorage.getItem(sessionTokenKey);
+    if (!sessionToken) {
+      sessionToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(sessionTokenKey, sessionToken);
+    }
+
+    counters.forEach((counter) => {
+      if (counter.dataset.zoroInitialized === 'true') return;
+      counter.dataset.zoroInitialized = 'true';
+
+      const selector = counter.dataset.targetSelector;
+      const insertMode = counter.dataset.insertMode || 'default';
+      if (selector) {
+        const target = document.querySelector(selector);
+        if (target && target !== counter && !target.contains(counter)) {
+          if (insertMode === 'before') target.insertAdjacentElement('beforebegin', counter);
+          if (insertMode === 'after') target.insertAdjacentElement('afterend', counter);
+          if (insertMode === 'append') target.appendChild(counter);
+        }
+      }
+
+      const nativeStock = Number.parseInt(counter.dataset.nativeStock, 10);
+      const fallbackStart = Number.parseInt(counter.dataset.startCount, 10) || 7;
+      const minCount = Number.parseInt(counter.dataset.minCount, 10) || 2;
+      const maxCount = Math.max(Number.parseInt(counter.dataset.maxCount, 10) || fallbackStart, fallbackStart, minCount);
+      const key = `zoro-stock-count:${counter.dataset.productId}:${counter.dataset.variantId}:${sessionToken}`;
+      const cached = Number.parseInt(sessionStorage.getItem(key), 10);
+      const hasNativeStock = Number.isFinite(nativeStock) && nativeStock > 0;
+      let count = Number.isFinite(cached) ? cached : (hasNativeStock ? Math.min(nativeStock, fallbackStart) : fallbackStart);
+      count = Math.max(count, minCount);
+
+      const textNode = counter.querySelector('.zoro-stock-counter__text');
+      const bar = counter.querySelector('.zoro-stock-counter__bar');
+      const template = counter.dataset.textTemplate || 'Hurry! Only {{ stock_count }} items left in stock';
+
+      const render = () => {
+        if (textNode) textNode.textContent = template.replace(/{{\s*stock_count\s*}}/g, count);
+        if (bar) {
+          const percentage = Math.max(0.08, Math.min(1, count / maxCount));
+          bar.style.transform = `scaleX(${percentage})`;
+        }
+        sessionStorage.setItem(key, String(count));
+      };
+
+      render();
+
+      if (count > minCount) {
+        const tickMs = hasNativeStock ? 1900 : 1400;
+        const timer = window.setInterval(() => {
+          count -= 1;
+          render();
+          if (count <= minCount) window.clearInterval(timer);
+        }, tickMs);
+      }
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Zoro Product Stock Counter",
+  "target": "section",
+  "enabled_on": {
+    "templates": ["product"]
+  },
+  "settings": [
+    {
+      "type": "text",
+      "id": "message",
+      "label": "Text content",
+      "default": "Hurry! Only {{ stock_count }} items left in stock"
+    },
+    {
+      "type": "range",
+      "id": "text_size",
+      "label": "Text size",
+      "min": 12,
+      "max": 28,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "progress_bar_color",
+      "label": "Progress bar color",
+      "default": "#e11d48"
+    },
+    {
+      "type": "range",
+      "id": "fallback_start_count",
+      "label": "Fallback start count",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "default": 7
+    },
+    {
+      "type": "range",
+      "id": "minimum_count",
+      "label": "Minimum countdown count",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "progress_max_count",
+      "label": "Progress bar max count",
+      "min": 5,
+      "max": 20,
+      "step": 1,
+      "default": 7
+    },
+    {
+      "type": "text",
+      "id": "target_selector",
+      "label": "Custom target positioning selector",
+      "default": ".product-form, product-form, form[action*='/cart/add']"
+    },
+    {
+      "type": "select",
+      "id": "insert_mode",
+      "label": "Selector insert position",
+      "default": "before",
+      "options": [
+        { "value": "default", "label": "Use theme editor position" },
+        { "value": "before", "label": "Before selector" },
+        { "value": "after", "label": "After selector" },
+        { "value": "append", "label": "Inside selector" }
+      ]
+    }
+  ]
+}
+{% endschema %}
