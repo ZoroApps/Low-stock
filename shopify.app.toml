@@ -1,0 +1,5 @@
+name = "Zoro Stock Scarcity Tracker"
+embedded = true
+
+[access_scopes]
+scopes = ""
