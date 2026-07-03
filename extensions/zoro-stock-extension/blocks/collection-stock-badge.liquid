@@ -1,0 +1,87 @@
+{{ 'zoro-stock.css' | asset_url | stylesheet_tag }}
+
+<div
+  class="zoro-collection-stock-badge-source"
+  data-zoro-collection-stock-badge
+  data-badge-text="{{ block.settings.badge_text | escape }}"
+  data-card-selector="{{ block.settings.product_card_selector | escape }}"
+  data-media-selector="{{ block.settings.product_media_selector | escape }}"
+  style="--zoro-badge-bg: {{ block.settings.background_color }}; --zoro-badge-color: {{ block.settings.text_color }};"
+  {{ block.shopify_attributes }}
+></div>
+
+<script>
+  (() => {
+    const sources = document.querySelectorAll('[data-zoro-collection-stock-badge]');
+    if (!sources.length) return;
+
+    sources.forEach((source, sourceIndex) => {
+      if (source.dataset.zoroInitialized === 'true') return;
+      source.dataset.zoroInitialized = 'true';
+
+      const cardSelector = source.dataset.cardSelector || '.card-wrapper, .grid__item, product-card';
+      const mediaSelector = source.dataset.mediaSelector || '.card__media, .product-card__image-wrapper, .media, a[href*="/products/"]';
+      const badgeText = source.dataset.badgeText || 'Running Low';
+      const styles = window.getComputedStyle(source);
+      const backgroundColor = styles.getPropertyValue('--zoro-badge-bg').trim() || '#e11d48';
+      const textColor = styles.getPropertyValue('--zoro-badge-color').trim() || '#ffffff';
+
+      document.querySelectorAll(cardSelector).forEach((card, cardIndex) => {
+        if (card.querySelector('.zoro-collection-stock-badge')) return;
+        const media = card.querySelector(mediaSelector) || card;
+        media.classList.add('zoro-collection-stock-badge-host');
+
+        const badge = document.createElement('span');
+        badge.className = 'zoro-collection-stock-badge';
+        badge.textContent = badgeText;
+        badge.style.setProperty('--zoro-badge-bg', backgroundColor);
+        badge.style.setProperty('--zoro-badge-color', textColor);
+        badge.setAttribute('aria-label', badgeText);
+        badge.dataset.zoroBadgeId = `${sourceIndex}-${cardIndex}`;
+        media.appendChild(badge);
+      });
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Zoro Collection Stock Badge",
+  "target": "section",
+  "enabled_on": {
+    "templates": ["collection"]
+  },
+  "settings": [
+    {
+      "type": "text",
+      "id": "badge_text",
+      "label": "Badge text",
+      "default": "Running Low"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#e11d48"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "text",
+      "id": "product_card_selector",
+      "label": "Product card selector",
+      "default": ".card-wrapper, .grid__item, product-card"
+    },
+    {
+      "type": "text",
+      "id": "product_media_selector",
+      "label": "Product image selector",
+      "default": ".card__media, .product-card__image-wrapper, .media, a[href*='/products/']"
+    }
+  ]
+}
+{% endschema %}
