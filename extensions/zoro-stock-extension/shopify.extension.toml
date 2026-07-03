@@ -1,0 +1,15 @@
+name = "Zoro Stock Scarcity Counter"
+type = "theme_app_extension"
+handle = "zoro-stock-block"
+
+[[blocks]]
+type = "product_stock_counter"
+name = "Zoro Product Stock Counter"
+path = "blocks/product-stock-counter.liquid"
+target = "section"
+
+[[blocks]]
+type = "collection_stock_badge"
+name = "Zoro Collection Stock Badge"
+path = "blocks/collection-stock-badge.liquid"
+target = "section"
